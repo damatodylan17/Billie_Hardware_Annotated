@@ -1,0 +1,239 @@
+<?xml version="1.0"?>
+<!-- LEARNING GUIDE: this URDF describes geometry, joint connections, and inertial properties for Pinocchio. It does not issue motor commands. -->
+<robot name="biped_billie_linkage_pinned">
+
+  <!-- Simplified linkage model.
+       Root/reference frame: LeftFoot.
+       Kinematic chain:
+       LeftFoot -> LeftShin -> LeftThigh -> Torso
+                -> RightThigh -> RightShin -> RightFoot
+  -->
+
+  <!-- Named materials define visual colors using red, green, blue, and alpha values; they do not change the dynamics. -->
+  <material name="dark_gray"><color rgba="0.25 0.25 0.25 1"/></material>
+  <material name="light_gray"><color rgba="0.65 0.65 0.65 1"/></material>
+  <material name="red"><color rgba="0.80 0.10 0.10 1"/></material>
+  <material name="green"><color rgba="0.10 0.65 0.10 1"/></material>
+  <material name="blue"><color rgba="0.10 0.20 0.80 1"/></material>
+
+  <!-- Root link: fixed by loading this URDF as a fixed-base model. -->
+  <!-- The fixed-base model roots at LeftFoot. Its world pose is fixed by model construction; this is not an alternating-support walking model. -->
+  <link name="LeftFoot">
+    <!-- Inertial data: mass is in kg, center-of-mass origin is in meters, and inertia tensor entries are in kg*m^2 about that inertial frame. -->
+    <inertial>
+      <origin xyz="0 0 0.019" rpy="0 0 0"/>
+      <mass value="0.0287309120146299"/>
+      <inertia ixx="4.148743695e-06" ixy="0" ixz="0"
+               iyy="4.148743695e-06" iyz="0" izz="4.148743695e-06"/>
+    </inertial>
+    <!-- Visual geometry is used for display; its local origin locates it relative to the link frame. -->
+    <visual>
+      <origin xyz="0 0 0.019" rpy="0 0 0"/>
+      <geometry><sphere radius="0.03"/></geometry>
+      <material name="dark_gray"/>
+    </visual>
+    <!-- Collision geometry describes a contact shape for compatible engines. Loading this model for inverse dynamics does not itself simulate contacts. -->
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><sphere radius="0.03"/></geometry>
+    </collision>
+  </link>
+
+  <!-- Ankle-to-knee distance: 0.2169998 m. -->
+  <!-- Left lower leg: the revolute ankle connects this link to the root foot. -->
+  <link name="LeftShin">
+    <!-- Inertial data: mass is in kg, center-of-mass origin is in meters, and inertia tensor entries are in kg*m^2 about that inertial frame. -->
+    <inertial>
+      <origin xyz="0 0 0.1084999" rpy="0 0 0"/>
+      <mass value="0.0432446610161898"/>
+      <inertia ixx="1.7071e-04" ixy="0" ixz="0"
+               iyy="1.7071e-04" iyz="0" izz="1.8019e-05"/>
+    </inertial>
+    <!-- Visual geometry is used for display; its local origin locates it relative to the link frame. -->
+    <visual>
+      <origin xyz="0 0 0.1084999" rpy="0 0 0"/>
+      <geometry><box size="0.04 0.04 0.2169998"/></geometry>
+      <material name="light_gray"/>
+    </visual>
+    <!-- Collision geometry describes a contact shape for compatible engines. Loading this model for inverse dynamics does not itself simulate contacts. -->
+    <collision>
+      <origin xyz="0 0 0.1084999" rpy="0 0 0"/>
+      <geometry><box size="0.04 0.04 0.2169998"/></geometry>
+    </collision>
+  </link>
+
+  <!-- Model coordinate 0: passive revolute left ankle. The controllers omit an actuator here even though an effort limit is present in the URDF. -->
+  <joint name="LeftAnkle" type="revolute">
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <parent link="LeftFoot"/>
+    <child link="LeftShin"/>
+    <!-- Positive joint rotation follows the right-hand rule about local negative y. Motor installation and encoder zero must use a compatible sign convention. -->
+    <axis xyz="0 -1 0"/>
+    <!-- Revolute limits use radians, effort uses N*m, velocity uses rad/s. These model limits are not automatically enforced by the Python CAN send methods. -->
+    <limit lower="-2.0" upper="2.0" effort="12" velocity="31"/>
+  </joint>
+
+  <!-- Knee-to-hip distance: 0.188 m. -->
+  <!-- Left upper leg: its parent joint is the left knee and its child joint is the left hip. -->
+  <link name="LeftThigh">
+    <!-- Inertial data: mass is in kg, center-of-mass origin is in meters, and inertia tensor entries are in kg*m^2 about that inertial frame. -->
+    <inertial>
+      <origin xyz="0 0 0.094" rpy="0 0 0"/>
+      <mass value="0.156796809757236"/>
+      <inertia ixx="4.8225e-04" ixy="0" ixz="0"
+               iyy="4.8225e-04" iyz="0" izz="6.5332e-05"/>
+    </inertial>
+    <!-- Visual geometry is used for display; its local origin locates it relative to the link frame. -->
+    <visual>
+      <origin xyz="0 0 0.094" rpy="0 0 0"/>
+      <geometry><box size="0.05 0.05 0.188"/></geometry>
+      <material name="red"/>
+    </visual>
+    <!-- Collision geometry describes a contact shape for compatible engines. Loading this model for inverse dynamics does not itself simulate contacts. -->
+    <collision>
+      <origin xyz="0 0 0.094" rpy="0 0 0"/>
+      <geometry><box size="0.05 0.05 0.188"/></geometry>
+    </collision>
+  </link>
+
+  <!-- Model coordinate 1: left knee, mapped to CAN motor ID 1 in the Python scripts. -->
+  <joint name="LeftKnee" type="revolute">
+    <origin xyz="0 0 0.2169998" rpy="0 0 0"/>
+    <parent link="LeftShin"/>
+    <child link="LeftThigh"/>
+    <!-- Positive joint rotation follows the right-hand rule about local negative y. Motor installation and encoder zero must use a compatible sign convention. -->
+    <axis xyz="0 -1 0"/>
+    <!-- Revolute limits use radians, effort uses N*m, velocity uses rad/s. These model limits are not automatically enforced by the Python CAN send methods. -->
+    <limit lower="-2.6" upper="0" effort="12" velocity="31"/>
+  </joint>
+
+  <!-- Hip spacing: 0.154 m in the y direction. -->
+  <!-- The torso connects the left and right hip chains; its mass and inertia affect model-based torque calculations. -->
+  <link name="Torso">
+    <!-- Inertial data: mass is in kg, center-of-mass origin is in meters, and inertia tensor entries are in kg*m^2 about that inertial frame. -->
+    <inertial>
+      <origin xyz="0 0.077 0.10" rpy="0 0 0"/>
+      <mass value="0.336117564776658"/>
+      <inertia ixx="1.8547e-03" ixy="0" ixz="0"
+               iyy="1.1484e-03" iyz="0" izz="8.5638e-04"/>
+    </inertial>
+    <!-- Visual geometry is used for display; its local origin locates it relative to the link frame. -->
+    <visual>
+      <origin xyz="0 0.077 0.025" rpy="0 0 0"/>
+      <geometry><box size="0.08 0.230 0.05"/></geometry>
+      <material name="light_gray"/>
+    </visual>
+    <!-- Collision geometry describes a contact shape for compatible engines. Loading this model for inverse dynamics does not itself simulate contacts. -->
+    <collision>
+      <origin xyz="0 0.077 0.10" rpy="0 0 0"/>
+      <geometry><box size="0.08 0.154 0.05"/></geometry>
+    </collision>
+  </link>
+
+  <!-- Model coordinate 2: left hip, mapped to CAN motor ID 3. -->
+  <joint name="LeftHip" type="revolute">
+    <origin xyz="0 0 0.188" rpy="0 0 0"/>
+    <parent link="LeftThigh"/>
+    <child link="Torso"/>
+    <!-- Positive joint rotation follows the right-hand rule about local negative y. Motor installation and encoder zero must use a compatible sign convention. -->
+    <axis xyz="0 -1 0"/>
+    <!-- Revolute limits use radians, effort uses N*m, velocity uses rad/s. These model limits are not automatically enforced by the Python CAN send methods. -->
+    <limit lower="-1.5" upper="1.5" effort="12" velocity="31"/>
+  </joint>
+
+  <!-- Right upper leg extends downward in this link frame, hence the negative z origins in its geometry. -->
+  <link name="RightThigh">
+    <!-- Inertial data: mass is in kg, center-of-mass origin is in meters, and inertia tensor entries are in kg*m^2 about that inertial frame. -->
+    <inertial>
+      <origin xyz="0 0 -0.094" rpy="0 0 0"/>
+      <mass value="0.156796809755688"/>
+      <inertia ixx="4.8225e-04" ixy="0" ixz="0"
+               iyy="4.8225e-04" iyz="0" izz="6.5332e-05"/>
+    </inertial>
+    <!-- Visual geometry is used for display; its local origin locates it relative to the link frame. -->
+    <visual>
+      <origin xyz="0 0 -0.094" rpy="0 0 0"/>
+      <geometry><box size="0.05 0.05 0.188"/></geometry>
+      <material name="blue"/>
+    </visual>
+    <!-- Collision geometry describes a contact shape for compatible engines. Loading this model for inverse dynamics does not itself simulate contacts. -->
+    <collision>
+      <origin xyz="0 0 -0.094" rpy="0 0 0"/>
+      <geometry><box size="0.05 0.05 0.188"/></geometry>
+    </collision>
+  </link>
+
+  <!-- Model coordinate 3: right hip, mapped to CAN motor ID 4. -->
+  <joint name="RightHip" type="revolute">
+    <origin xyz="0 0.154 0" rpy="0 0 0"/>
+    <parent link="Torso"/>
+    <child link="RightThigh"/>
+    <!-- Positive joint rotation follows the right-hand rule about local negative y. Motor installation and encoder zero must use a compatible sign convention. -->
+    <axis xyz="0 -1 0"/>
+    <!-- Revolute limits use radians, effort uses N*m, velocity uses rad/s. These model limits are not automatically enforced by the Python CAN send methods. -->
+    <limit lower="-1.5" upper="1.5" effort="12" velocity="31"/>
+  </joint>
+
+  <!-- Right lower leg extends toward the terminal right foot. -->
+  <link name="RightShin">
+    <!-- Inertial data: mass is in kg, center-of-mass origin is in meters, and inertia tensor entries are in kg*m^2 about that inertial frame. -->
+    <inertial>
+      <origin xyz="0 0 -0.1084999" rpy="0 0 0"/>
+      <mass value="0.0432446610161898"/>
+      <inertia ixx="1.7071e-04" ixy="0" ixz="0"
+               iyy="1.7071e-04" iyz="0" izz="1.8019e-05"/>
+    </inertial>
+    <!-- Visual geometry is used for display; its local origin locates it relative to the link frame. -->
+    <visual>
+      <origin xyz="0 0 -0.1084999" rpy="0 0 0"/>
+      <geometry><box size="0.04 0.04 0.2169998"/></geometry>
+      <material name="light_gray"/>
+    </visual>
+    <!-- Collision geometry describes a contact shape for compatible engines. Loading this model for inverse dynamics does not itself simulate contacts. -->
+    <collision>
+      <origin xyz="0 0 -0.1084999" rpy="0 0 0"/>
+      <geometry><box size="0.04 0.04 0.2169998"/></geometry>
+    </collision>
+  </link>
+
+  <!-- Model coordinate 4: right knee, mapped to CAN motor ID 2. -->
+  <joint name="RightKnee" type="revolute">
+    <origin xyz="0 0 -0.188" rpy="0 0 0"/>
+    <parent link="RightThigh"/>
+    <child link="RightShin"/>
+    <!-- Positive joint rotation follows the right-hand rule about local negative y. Motor installation and encoder zero must use a compatible sign convention. -->
+    <axis xyz="0 -1 0"/>
+    <!-- Revolute limits use radians, effort uses N*m, velocity uses rad/s. These model limits are not automatically enforced by the Python CAN send methods. -->
+    <limit lower="0" upper="2.6" effort="12" velocity="31"/>
+  </joint>
+
+  <!-- Terminal foot link. Its fixed ankle adds no independent joint position or velocity. -->
+  <link name="RightFoot">
+    <!-- Inertial data: mass is in kg, center-of-mass origin is in meters, and inertia tensor entries are in kg*m^2 about that inertial frame. -->
+    <inertial>
+      <origin xyz="0 0 0.019" rpy="0 0 0"/>
+      <mass value="0.0287309120146299"/>
+      <inertia ixx="4.148743695e-06" ixy="0" ixz="0"
+               iyy="4.148743695e-06" iyz="0" izz="4.148743695e-06"/>
+    </inertial>
+    <!-- Visual geometry is used for display; its local origin locates it relative to the link frame. -->
+    <visual>
+      <origin xyz="0 0.019 0.019" rpy="0 0 0"/>
+      <geometry><sphere radius="0.03"/>
+      </geometry><material name="dark_gray"/>
+    </visual>
+    <!-- Collision geometry describes a contact shape for compatible engines. Loading this model for inverse dynamics does not itself simulate contacts. -->
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><sphere radius="0.03"/></geometry>
+    </collision>
+  </link>
+
+  <!-- A fixed joint creates no additional degree of freedom. This model therefore has five moving coordinates and the controllers use four actuators. -->
+  <joint name="RightAnkle" type="fixed">
+    <origin xyz="0 -0.01625 -0.2169998" rpy="0 0 0"/>
+    <parent link="RightShin"/>
+    <child link="RightFoot"/>
+  </joint>
+
+</robot>
